@@ -3,7 +3,7 @@ import * as React from "react";
 import manageJss, { ComponentStyles, DesignSystemProvider, IJSSManagerProps, IManagedClasses } from "@microsoft/fast-jss-manager-react";
 import { glyphBuildingblocks, glyphGlobalnavbutton, glyphTransparency } from "@microsoft/fast-glyphs-msft";
 import Form from "@microsoft/fast-form-generator-react";
-import { uniqueId } from "lodash-es";
+import { uniqueId, get } from "lodash-es";
 import devSiteDesignSystemDefaults, { IDevSiteDesignSystem } from "../design-system";
 import Shell, { ShellHeader, ShellInfoBar, ShellPaneCollapse, ShellSlot } from "../shell";
 import { BrowserRouter, Redirect, Route, Switch } from "react-router-dom";
@@ -302,8 +302,8 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
         const updatedTheme: ITheme | null = props.activeTheme
             ? props.activeTheme
             : props.themes
-            ? props.themes.find((theme: ITheme) => theme.id === state.theme.id)
-            : null;
+                ? props.themes.find((theme: ITheme) => theme.id === state.theme.id)
+                : null;
 
         return updatedTheme === null ? null : { theme: updatedTheme };
     }
@@ -326,14 +326,94 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
             theme: this.props.activeTheme || this.getInitialTheme()
         };
     }
+    public renderNewShit(cond: boolean): JSX.Element {
+        if (!cond) {
+            return null;
+        }
+
+        const paneStyleSheet: Partial<ComponentStyles<IPaneClassNamesContract, IDevSiteDesignSystem>> = {
+            pane: {
+                backgroundColor: (config: IDevSiteDesignSystem): string => {
+                    return config.lightGray;
+                }
+            }
+        };
+
+        return (
+            <Row fill={true}>
+                <Pane
+                    collapsed={this.state.tableOfContentsCollapsed}
+                    resizable={true}
+                    resizeFrom={PaneResizeDirection.east}
+                    jssStyleSheet={paneStyleSheet}
+                    minWidth={200}
+                >
+                    <div>
+                        <button
+                            onClick={this.handlePaneCollapse}
+                            className={this.props.managedClasses.site_paneToggleButton}
+                        >
+                            <span
+                                className={this.props.managedClasses.site_paneToggleButtonIcon}
+                                dangerouslySetInnerHTML={{ __html: glyphGlobalnavbutton }}
+                            />
+
+                        </button>
+                        {this.renderChildrenBySlot(this, ShellSlot.pane)}
+                        <ul className={this.props.managedClasses.site_paneToc}>
+                            {/*this.renderRootToc(this.props.children, SiteSlot.category, route.route, "/") */}
+                        </ul>
+                    </div>
+                </Pane>
+            </Row>
+
+        );
+    }
 
     public render(): JSX.Element {
         return (
             <DesignSystemProvider designSystem={devSiteDesignSystemDefaults}>
                 <BrowserRouter>
                     <Shell>
-                        {this.renderShellHeader()}
-                        {this.renderShellInfoBar()}
+                        <ShellHeader>
+                            {this.renderChildrenBySlot(this, ShellSlot.header)}
+                            {this.renderSiteTitle()}
+                        </ShellHeader>
+                        {this.renderNewShit(true)}
+                        <Switch>
+                            <Route
+                                exact={true}
+                                path={"/"}
+                            >
+                                <Redirect to={this.initialPath} />
+                            </Route>
+                            {this.renderRoutes()}
+                            <Route path="*" component={NotFound} />
+                        </Switch>
+                        <ShellInfoBar>
+                            <div className={this.props.managedClasses.site_statusBar}>
+                                <span className={this.props.managedClasses.site_statusComponentName}>
+                                    Component: {this.state.componentName}
+                                </span>
+                                {this.renderStatus()}
+                            </div>
+
+                            {this.renderChildrenBySlot(this, ShellSlot.infoBar)}
+
+                            <div className={this.props.managedClasses.site_infoBarConfiguration}>
+                                {this.renderTransparencyToggle()}
+                                {this.renderThemeSelect()}
+                                <span className={this.props.managedClasses.site_infoBarConfiguration_base}>
+                                    <select
+                                        className={this.props.managedClasses.site_infoBarConfiguration_input}
+                                        onChange={this.handleLocaleUpdate}
+                                        value={this.state.locale}
+                                    >
+                                        {this.renderLocales()}
+                                    </select>
+                                </span>
+                            </div>
+                        </ShellInfoBar>
                     </Shell>
                 </BrowserRouter>
             </DesignSystemProvider>
@@ -371,7 +451,7 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
     private getComponentData(): IComponentData {
         const componentData: IComponentData = {};
 
-        this.getRoutes((this.props.children as JSX.Element), "/", SiteSlot.category).forEach((route: IComponentRoute) => {
+        this.getRoutes(this.props.children, "/", SiteSlot.category).forEach((route: IComponentRoute) => {
             componentData[route.route] = [];
             route.exampleView.forEach((routeChild: JSX.Element, index: number) => {
                 componentData[route.route][index] = routeChild.props.data;
@@ -384,7 +464,7 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
     private getComponentStatus(currentPath?: string): Status {
         let componentStatus: Status = Status.beta;
 
-        this.getRoutes((this.props.children as JSX.Element), "/", SiteSlot.category).forEach((route: IComponentRoute) => {
+        this.getRoutes(this.props.children, "/", SiteSlot.category).forEach((route: IComponentRoute) => {
             if ((currentPath && route.route === currentPath || !currentPath && route.route === this.state.currentPath) && route.status) {
                 componentStatus = route.status;
             }
@@ -396,7 +476,7 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
     private getDetailViewComponentData(): IComponentData {
         const componentData: IComponentData = {};
 
-        this.getRoutes((this.props.children as JSX.Element), "/", SiteSlot.category).forEach((route: IComponentRoute) => {
+        this.getRoutes(this.props.children, "/", SiteSlot.category).forEach((route: IComponentRoute) => {
             componentData[route.route] = [];
             route.detailView.forEach((routeChild: JSX.Element, index: number) => {
                 if (routeChild && routeChild.props && routeChild.props.slot === ComponentViewSlot.detailExample) {
@@ -433,7 +513,7 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
     }
 
     private renderRoutes(): JSX.Element[] {
-        return this.getRoutes((this.props.children as JSX.Element), "/", SiteSlot.category)
+        return this.getRoutes(this.props.children, "/", SiteSlot.category)
             .map(this.renderComponentRoute);
     }
 
@@ -454,17 +534,7 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
         );
     }
 
-    private renderShellHeader(): JSX.Element {
-        return (
-            <ShellHeader>
-                {this.renderChildrenBySlot(this, ShellSlot.header)}
-                {this.renderTitle()}
-            </ShellHeader>
-        );
-    }
-
     private renderShellRow(route: IComponentRoute): JSX.Element {
-
         const paneStyleSheet: Partial<ComponentStyles<IPaneClassNamesContract, IDevSiteDesignSystem>> = {
             pane: {
                 backgroundColor: (config: IDevSiteDesignSystem): string => {
@@ -483,10 +553,19 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
                     minWidth={200}
                 >
                     <div>
-                        {this.renderPaneCollapseToggle()}
+                        <button
+                            onClick={this.handlePaneCollapse}
+                            className={this.props.managedClasses.site_paneToggleButton}
+                        >
+                            <span
+                                className={this.props.managedClasses.site_paneToggleButtonIcon}
+                                dangerouslySetInnerHTML={{ __html: glyphGlobalnavbutton }}
+                            />
+
+                        </button>
                         {this.renderChildrenBySlot(this, ShellSlot.pane)}
                         <ul className={this.props.managedClasses.site_paneToc}>
-                            {this.renderRootToc(this.props.children, SiteSlot.category, route.route, "/")}
+                            {this.renderRootToc(route.route, "/")}
                         </ul>
                     </div>
                 </Pane>
@@ -545,21 +624,19 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
         }
     }
 
-    private renderTitle(): JSX.Element {
-        const children: React.ReactNode[] = Array.isArray(this.props.children) ? this.props.children : [this.props.children];
-        let title: JSX.Element = null;
+    /**
+     * Render the site title
+     */
+    private renderSiteTitle(): JSX.Element {
+        const title: JSX.Element[] | undefined = this.renderChildrenBySlot(this, "title");
 
-        children.forEach((child: JSX.Element) => {
-            if (child && child.props && child.props.slot === "title") {
-                title = (
-                    <span className={this.props.managedClasses.site_headerTitle}>
-                        {child}
-                    </span>
-                );
-            }
-        });
-
-        return title;
+        return Array.isArray(title)
+            ? (
+                <span className={this.props.managedClasses.site_headerTitle}>
+                    {title}
+                </span>
+            )
+            : null;
     }
 
     private getCurrentComponentData(): any {
@@ -717,43 +794,6 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
         });
     }
 
-    private renderShellInfoBar(): JSX.Element {
-        return (
-            <ShellInfoBar>
-                {this.renderStatusBar()}
-                {this.renderChildrenBySlot(this, ShellSlot.infoBar)}
-                {this.renderInfoBarConfiguration()}
-            </ShellInfoBar>
-        );
-    }
-
-    private renderInfoBarConfiguration(): JSX.Element {
-        return (
-            <div className={this.props.managedClasses.site_infoBarConfiguration}>
-                {this.renderTransparencyToggle()}
-                {this.renderThemeSelect()}
-                <span className={this.props.managedClasses.site_infoBarConfiguration_base}>
-                    <select
-                        className={this.props.managedClasses.site_infoBarConfiguration_input}
-                        onChange={this.handleLocaleUpdate}
-                        value={this.state.locale}
-                    >
-                        {this.renderLocales()}
-                    </select>
-                </span>
-            </div>
-        );
-    }
-
-    private renderStatusBar(): JSX.Element {
-        return (
-            <div className={this.props.managedClasses.site_statusBar}>
-                <span className={this.props.managedClasses.site_statusComponentName}>Component: {this.state.componentName}</span>
-                {this.renderStatus()}
-            </div>
-        );
-    }
-
     private renderTransparencyToggle(): JSX.Element {
         if (this.props.showTransparencyToggle) {
             return (
@@ -858,13 +898,17 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
     }
 
     /**
-     * Gets all of the potential routes as strings to be used to build the shell
+     * Gets all of the potential routes to build the shell
      */
-    private getRoutes(items: JSX.Element, baseRoute: string, slot: SiteSlot, routes?: IComponentRoute[]): IComponentRoute[] {
+    private getRoutes(
+        children: React.ReactNode | React.ReactNodeArray,
+        baseRoute: string,
+        slot: SiteSlot,
+        routes?: IComponentRoute[]
+    ): IComponentRoute[] {
         let currentRoutes: IComponentRoute[] = routes;
-        const childItems: JSX.Element[] = Array.isArray(items) ? items : [items];
 
-        childItems.forEach((item: JSX.Element): void => {
+        React.Children.forEach(children, (item: JSX.Element): void => {
             if (item && item.props && item.props.slot === slot) {
                 currentRoutes = this.getCurrentRoute(item, slot, baseRoute, currentRoutes || []);
             }
@@ -921,50 +965,18 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
         }
     }
 
-    private renderPaneCollapseToggle(): JSX.Element {
-        return (
-            <button
-                onClick={this.handlePaneCollapse}
-                className={this.props.managedClasses.site_paneToggleButton}
-            >
-                <span
-                    className={this.props.managedClasses.site_paneToggleButtonIcon}
-                    dangerouslySetInnerHTML={{__html: glyphGlobalnavbutton}}
-                />
-            </button>
-        );
+    private renderRootToc(currentPath: string, itemsPath: string): JSX.Element[] {
+        return this.getToc(this.props.children, currentPath, itemsPath);
     }
 
-    private renderRootToc(items: any, slot: string, currentPath: string, itemsPath: string): JSX.Element {
-        if (this.props && this.props.children) {
-            return (this.getToc(items, slot, currentPath, itemsPath, this.state.tableOfContentsCollapsed) as JSX.Element);
-        }
-    }
-
-    private getToc(
-        items: any,
-        slot: string,
-        currentPath: string,
-        itemsPath: string,
-        collapsed?: boolean
-    ): JSX.Element | JSX.Element[] {
-        const categoryItems: JSX.Element[] = [];
-        const rootTocItems: JSX.Element[] = [];
-        const tocItems: any[] = Array.isArray(items) ? items : [items];
-
-        tocItems.forEach((item: JSX.Element) => {
-            const isInSlot: boolean = item && item.props && item.props.slot === slot;
-
-            if (isInSlot && ((collapsed && this.renderTocItemCategoryIcon(item)) || !collapsed)) {
-                categoryItems.push(item);
-            }
-        });
-
-        categoryItems.forEach((categoryItem: JSX.Element, index: number) => {
-            rootTocItems.push(this.renderTocItem(index, itemsPath, categoryItem, categoryItem, currentPath, slot));
-        });
-
-        return rootTocItems;
+    private getToc(items: any, currentPath: string, itemsPath: string): JSX.Element[] {
+        return React.Children.toArray(items)
+            .filter((item: React.ReactNode) => {
+                return get(item, "props.slot") === SiteSlot.category;
+            })
+            .map((item: React.ReactElement<any>, index: number) => {
+                return this.renderTocItem(index, itemsPath, item, currentPath);
+            });
     }
 
     /**
@@ -979,13 +991,11 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
     private renderTocItem(
         index: number,
         itemsPath: string,
-        items: JSX.Element,
         child: JSX.Element,
-        currentPath: string,
-        slot: string
+        currentPath: string
     ): JSX.Element {
-        const tocItemPath: string = this.convertToHyphenated(`${itemsPath}${items.props.name}/`);
-        const contentId: string = uniqueId(this.convertToHyphenated(items.props.name));
+        const tocItemPath: string = this.convertToHyphenated(`${itemsPath}${child.props.name}/`);
+        const contentId: string = uniqueId(this.convertToHyphenated(child.props.name));
         const active: boolean = currentPath.match(tocItemPath) !== null;
         const attributes: any = {
             key: index,
@@ -1003,7 +1013,7 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
             }
         };
 
-        if (this.hasCanvasContent(items)) {
+        if (this.hasCanvasContent(child)) {
             attributes.to = this.formatTocItemPathWithComponentViewTypes(tocItemPath);
         }
 
@@ -1011,7 +1021,7 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
             return (
                 <TocItem {...attributes}>
                     {this.renderTocItemCategory(child.props.name, this.renderTocItemCategoryIcon(child))}
-                    {this.renderTocItemMenu(child, slot, currentPath, tocItemPath)}
+                    {this.renderTocItemMenu(child, currentPath, tocItemPath)}
                 </TocItem>
             );
         }
@@ -1019,15 +1029,10 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
         return null;
     }
 
-    private renderTocItemMenu(item: JSX.Element, slot: string, currentPath: string, tocItemPath: string): JSX.Element {
-        if (
-            item.props.children &&
-            (!item.props.children.props || (item.props.children.props && item.props.children.props.slot !== SiteSlot.categoryIcon))
-        ) {
-            return (this.getToc(item.props.children, slot, currentPath, tocItemPath) as JSX.Element);
-        }
-
-        return null;
+    private renderTocItemMenu(item: JSX.Element, currentPath: string, tocItemPath: string): JSX.Element[] {
+        return item.props.children && get(item.props.children, "props.slot") !== SiteSlot.categoryIcon 
+            ? this.getToc(item.props.children, currentPath, tocItemPath)
+            : null;
     }
 
     private renderTocItemCategory(name: string | any, icon?: JSX.Element): JSX.Element {
