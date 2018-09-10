@@ -308,12 +308,8 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
         return updatedTheme === null ? null : { theme: updatedTheme };
     }
 
-    private initialPath: string;
-
     constructor(props: ISiteProps & IManagedClasses<ISiteManagedClasses>) {
         super(props);
-
-        this.initialPath = this.getInitialPath();
 
         this.state = {
             currentPath: this.initialPath,
@@ -325,8 +321,7 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
             componentData: this.getComponentData(),
             componentStatus: this.getComponentStatus(this.initialPath),
             detailViewComponentData: this.getDetailViewComponentData(),
-            formView: true,
-            devToolsView: false,
+            formView: true, devToolsView: false,
             locale: "en",
             theme: this.props.activeTheme || this.getInitialTheme()
         };
@@ -338,16 +333,6 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
                 <BrowserRouter>
                     <Shell>
                         {this.renderShellHeader()}
-                        <Switch>
-                            <Route
-                                exact={true}
-                                path={"/"}
-                            >
-                                <Redirect to={this.initialPath} />
-                            </Route>
-                            {this.renderRoutes()}
-                            <Route path="*" component={NotFound} />
-                        </Switch>
                         {this.renderShellInfoBar()}
                     </Shell>
                 </BrowserRouter>
@@ -613,7 +598,7 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
         });
     }
 
-    private getInitialPath = (): string => {
+    private get initialPath(): string {
         return Object.keys(this.getComponentData())[0];
     }
 
