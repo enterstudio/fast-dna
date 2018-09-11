@@ -3,7 +3,7 @@ import * as React from "react";
 import manageJss, { ComponentStyles, DesignSystemProvider, IJSSManagerProps, IManagedClasses } from "@microsoft/fast-jss-manager-react";
 import { glyphBuildingblocks, glyphGlobalnavbutton, glyphTransparency } from "@microsoft/fast-glyphs-msft";
 import Form from "@microsoft/fast-form-generator-react";
-import { uniqueId, get } from "lodash-es";
+import { get, has, uniqueId } from "lodash-es";
 import devSiteDesignSystemDefaults, { IDevSiteDesignSystem } from "../design-system";
 import Shell, { ShellHeader, ShellInfoBar, ShellPaneCollapse, ShellSlot } from "../shell";
 import { BrowserRouter, Redirect, Route, Switch } from "react-router-dom";
@@ -361,7 +361,7 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
                         </button>
                         {this.renderChildrenBySlot(this, ShellSlot.pane)}
                         <ul className={this.props.managedClasses.site_paneToc}>
-                            {/*this.renderRootToc(this.props.children, SiteSlot.category, route.route, "/") */}
+                            {this.renderToc()}
                         </ul>
                     </div>
                 </Pane>
@@ -545,30 +545,6 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
 
         return (
             <Row fill={true}>
-                <Pane
-                    collapsed={this.state.tableOfContentsCollapsed}
-                    resizable={true}
-                    resizeFrom={PaneResizeDirection.east}
-                    jssStyleSheet={paneStyleSheet}
-                    minWidth={200}
-                >
-                    <div>
-                        <button
-                            onClick={this.handlePaneCollapse}
-                            className={this.props.managedClasses.site_paneToggleButton}
-                        >
-                            <span
-                                className={this.props.managedClasses.site_paneToggleButtonIcon}
-                                dangerouslySetInnerHTML={{ __html: glyphGlobalnavbutton }}
-                            />
-
-                        </button>
-                        {this.renderChildrenBySlot(this, ShellSlot.pane)}
-                        <ul className={this.props.managedClasses.site_paneToc}>
-                            {this.renderRootToc(route.route, "/")}
-                        </ul>
-                    </div>
-                </Pane>
                 <Canvas>
                     <Row>
                         <ActionBar
@@ -965,17 +941,25 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
         }
     }
 
-    private renderRootToc(currentPath: string, itemsPath: string): JSX.Element[] {
-        return this.getToc(this.props.children, currentPath, itemsPath);
+    /**
+     * Renders the interactive table-of-contents, which is the primary
+     * form of naviation around the site
+     */
+    private renderToc(): JSX.Element[] {
+        return this.getToc(this.props.children, "/");
     }
 
-    private getToc(items: any, currentPath: string, itemsPath: string): JSX.Element[] {
+    /**
+     * Creates a table-of-contents from a given starting point. 
+     * This is used to recursivly generate sub-items
+     */
+    private getToc(items: React.ReactNode | React.ReactNode[], itemsPath: string): JSX.Element[] {
         return React.Children.toArray(items)
             .filter((item: React.ReactNode) => {
                 return get(item, "props.slot") === SiteSlot.category;
             })
             .map((item: React.ReactElement<any>, index: number) => {
-                return this.renderTocItem(index, itemsPath, item, currentPath);
+                return this.renderTocItem(index, itemsPath, item);
             });
     }
 
@@ -988,50 +972,38 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
             : path;
     }
 
-    private renderTocItem(
-        index: number,
-        itemsPath: string,
-        child: JSX.Element,
-        currentPath: string
-    ): JSX.Element {
+    private renderTocItem(index: number, itemsPath: string, child: JSX.Element): JSX.Element {
         const tocItemPath: string = this.convertToHyphenated(`${itemsPath}${child.props.name}/`);
-        const contentId: string = uniqueId(this.convertToHyphenated(child.props.name));
-        const active: boolean = currentPath.match(tocItemPath) !== null;
-        const attributes: any = {
-            key: index,
-            active,
-            heading: child && child.props ? !Boolean(child.props.children) : false,
-            to: void(0),
-            controls: contentId,
-            onClick: (e: React.MouseEvent<HTMLButtonElement>): void => {
+        const onClick: (e: React.MouseEvent<HTMLButtonElement>) => void =
+            (e: React.MouseEvent<HTMLButtonElement>): void => {
                 this.setState({
                     activeComponentIndex: 0,
                     componentName: this.getComponentName(tocItemPath),
                     componentStatus: this.getComponentStatus(tocItemPath),
                     currentPath: tocItemPath
                 });
-            }
-        };
+            };
 
-        if (this.hasCanvasContent(child)) {
-            attributes.to = this.formatTocItemPathWithComponentViewTypes(tocItemPath);
-        }
-
-        if (child && child.props && child.props.name) {
-            return (
-                <TocItem {...attributes}>
+        return has(child, "props.name")
+            ? (
+                <TocItem
+                    key={index}
+                    active={this.state.currentPath.match(tocItemPath)}
+                    heading={has(child, "props.children")}
+                    onClick={onClick}
+                    controls={uniqueId(this.convertToHyphenated(child.props.name))}
+                    to={this.hasCanvasContent(child) ? this.formatTocItemPathWithComponentViewTypes(tocItemPath) : null}
+                >
                     {this.renderTocItemCategory(child.props.name, this.renderTocItemCategoryIcon(child))}
-                    {this.renderTocItemMenu(child, currentPath, tocItemPath)}
+                    {this.renderTocItemMenu(child, tocItemPath)}
                 </TocItem>
-            );
-        }
-
-        return null;
+            )
+            : null;
     }
 
-    private renderTocItemMenu(item: JSX.Element, currentPath: string, tocItemPath: string): JSX.Element[] {
-        return item.props.children && get(item.props.children, "props.slot") !== SiteSlot.categoryIcon 
-            ? this.getToc(item.props.children, currentPath, tocItemPath)
+    private renderTocItemMenu(item: JSX.Element, tocItemPath: string): JSX.Element[] {
+        return item.props.children && get(item.props.children, "props.slot") !== SiteSlot.categoryIcon
+            ? this.getToc(item.props.children, tocItemPath)
             : null;
     }
 
@@ -1072,25 +1044,17 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
         return null;
     }
 
-    private hasCanvasContent(item: JSX.Element): boolean {
-        let hasCanvasContent: boolean = false;
-        const exampleSlot: string = ComponentViewSlot.example;
-        const detailExampleSlot: string = ComponentViewSlot.detailExample;
-        const detailDocumentationSlot: string = ComponentViewSlot.detailDocumentation;
-
-        if (item.props.children) {
-            const itemChildren: JSX.Element[] = Array.isArray(item.props.children) ? item.props.children : [item.props.children];
-
-            itemChildren.forEach((child: JSX.Element): void => {
-                hasCanvasContent = child && child.props
-                    ? child.props.slot === exampleSlot
-                        || child.props.slot === detailExampleSlot
-                        || child.props.slot === detailDocumentationSlot
-                    : false;
-            });
-        }
-
-        return hasCanvasContent;
+    /**
+     * Determines if any children of a provided Element have content
+     * that should be displayed in the canvas
+     */
+    private hasCanvasContent(item: React.ReactElement<any>): boolean {
+        return React.Children.toArray(item.props.children).findIndex((child: React.ReactElement<any>) => {
+            const slot: string = get(child, "props.slot");
+            return slot === ComponentViewSlot.example
+                || slot === ComponentViewSlot.detailExample
+                || slot === ComponentViewSlot.detailDocumentation;
+        }) !== -1;
     }
 
     private convertToHyphenated(name: string): string {

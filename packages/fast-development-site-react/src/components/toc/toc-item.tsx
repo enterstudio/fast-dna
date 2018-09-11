@@ -9,7 +9,7 @@ export interface ITocItemProps {
     to?: string;
     controls?: string;
     onToggleExpand?: () => void;
-    onClick?: () => void;
+    onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
     heading: boolean;
     active: boolean;
 }
