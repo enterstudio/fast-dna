@@ -321,14 +321,17 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
             componentData: this.getComponentData(),
             componentStatus: this.getComponentStatus(this.initialPath),
             detailViewComponentData: this.getDetailViewComponentData(),
-            formView: true, devToolsView: false,
+            formView: true,
+            devToolsView: false,
             locale: "en",
             theme: this.props.activeTheme || this.getInitialTheme()
         };
     }
-    public renderNewShit(cond: boolean): JSX.Element {
-        if (!cond) {
-            return null;
+    public renderNewShit(): JSX.Element {
+        const currentRoute: IComponentRoute = this.routeByPath(this.state.currentPath);
+
+        if (typeof currentRoute !== "object" || currentRoute === null) {
+            return null
         }
 
         const paneStyleSheet: Partial<ComponentStyles<IPaneClassNamesContract, IDevSiteDesignSystem>> = {
@@ -365,6 +368,41 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
                         </ul>
                     </div>
                 </Pane>
+                <Canvas>
+                    <Row>
+                        <ActionBar
+                            onComponentViewChange={this.onComponentViewChange}
+                            onFormToggle={this.onFormToggle}
+                            onDevToolsToggle={this.onDevToolsToggle}
+                            componentView={this.state.componentView}
+                            formView={this.state.formView}
+                            devToolsView={this.state.devToolsView}
+                        />
+                    </Row>
+                    <div className={this.props.managedClasses.site_canvasContent}>
+                        <ComponentView viewType={this.state.componentView}>
+                            {this.renderChildrenBySlot(this, ShellSlot.canvas)}
+                            {this.renderComponentByRoute(currentRoute)}
+                        </ComponentView>
+                        <Row
+                            resizable={true}
+                            hidden={!this.state.devToolsView}
+                            resizeFrom={RowResizeDirection.north}
+                            minHeight={180}
+                        >
+                            {this.renderDevTools(currentRoute.schema)}
+                        </Row>
+                    </div>
+                </Canvas>
+                <Pane
+                    hidden={!this.state.formView}
+                    resizable={true}
+                    resizeFrom={PaneResizeDirection.west}
+                    jssStyleSheet={paneStyleSheet}
+                    minWidth={324}
+                >
+                    {this.generateForm(currentRoute.schema)}
+                </Pane>
             </Row>
 
         );
@@ -379,7 +417,8 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
                             {this.renderChildrenBySlot(this, ShellSlot.header)}
                             {this.renderSiteTitle()}
                         </ShellHeader>
-                        {this.renderNewShit(true)}
+                        {this.renderNewShit()}
+                        { /* TODO: delete Switch */ }
                         <Switch>
                             <Route
                                 exact={true}
@@ -387,7 +426,6 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
                             >
                                 <Redirect to={this.initialPath} />
                             </Route>
-                            {this.renderRoutes()}
                             <Route path="*" component={NotFound} />
                         </Switch>
                         <ShellInfoBar>
@@ -440,7 +478,7 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
     }
 
     private getInitialTheme(): ITheme {
-        if (Array.isArray(this.props.themes) && this.props.themes.length) {
+        if (Array.isArray(this.props.themes)) {
             return this.props.themes[0];
         }
     }
@@ -512,77 +550,77 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
             : ComponentViewTypes.detail;
     }
 
-    private renderRoutes(): JSX.Element[] {
-        return this.getRoutes(this.props.children, "/", SiteSlot.category)
-            .map(this.renderComponentRoute);
-    }
+    // private renderRoutes(): JSX.Element[] {
+    //     return this.getRoutes(this.props.children, "/", SiteSlot.category)
+    //         .map(this.renderComponentRoute);
+    // }
 
     /**
      * Renders a route based on the active component
      */
-    private renderComponentRoute = (route: IComponentRoute | null): JSX.Element | null => {
-        const path: string = route.route;
+    // private renderComponentRoute = (route: IComponentRoute | null): JSX.Element | null => {
+    //     const path: string = route.route;
 
-        return (
-            <Route
-                key={path}
-                path={`${path}(|examples)`}
-                exact={true}
-            >
-                {this.renderShellRow(route)}
-            </Route>
-        );
-    }
+    //     return (
+    //         <Route
+    //             key={path}
+    //             path={`${path}(|examples)`}
+    //             exact={true}
+    //         >
+    //             {this.renderShellRow(route)}
+    //         </Route>
+    //     );
+    // }
 
-    private renderShellRow(route: IComponentRoute): JSX.Element {
-        const paneStyleSheet: Partial<ComponentStyles<IPaneClassNamesContract, IDevSiteDesignSystem>> = {
-            pane: {
-                backgroundColor: (config: IDevSiteDesignSystem): string => {
-                    return config.lightGray;
-                }
-            }
-        };
+    // private renderShellRow(route: IComponentRoute): JSX.Element {
+    //     const paneStyleSheet: Partial<ComponentStyles<IPaneClassNamesContract, IDevSiteDesignSystem>> = {
+    //         pane: {
+    //             backgroundColor: (config: IDevSiteDesignSystem): string => {
+    //                 return config.lightGray;
+    //             }
+    //         }
+    //     };
 
-        return (
-            <Row fill={true}>
-                <Canvas>
-                    <Row>
-                        <ActionBar
-                            onComponentViewChange={this.onComponentViewChange}
-                            onFormToggle={this.onFormToggle}
-                            onDevToolsToggle={this.onDevToolsToggle}
-                            componentView={this.state.componentView}
-                            formView={this.state.formView}
-                            devToolsView={this.state.devToolsView}
-                        />
-                    </Row>
-                    <div className={this.props.managedClasses.site_canvasContent}>
-                        <ComponentView {...{ viewType: this.state.componentView }}>
-                            {this.renderChildrenBySlot(this, ShellSlot.canvas)}
-                            {this.renderComponentByRoute(route)}
-                        </ComponentView>
-                        <Row
-                            resizable={true}
-                            hidden={!this.state.devToolsView}
-                            resizeFrom={RowResizeDirection.north}
-                            minHeight={180}
-                        >
-                            {this.renderDevTools(route.schema)}
-                        </Row>
-                    </div>
-                </Canvas>
-                <Pane
-                    hidden={!this.state.formView}
-                    resizable={true}
-                    resizeFrom={PaneResizeDirection.west}
-                    jssStyleSheet={paneStyleSheet}
-                    minWidth={324}
-                >
-                    {this.generateForm(route.exampleView, route.schema, route.route)}
-                </Pane>
-            </Row>
-        );
-    }
+    //     return (
+    //         <Row fill={true}>
+    //             <Canvas>
+    //                 <Row>
+    //                     <ActionBar
+    //                         onComponentViewChange={this.onComponentViewChange}
+    //                         onFormToggle={this.onFormToggle}
+    //                         onDevToolsToggle={this.onDevToolsToggle}
+    //                         componentView={this.state.componentView}
+    //                         formView={this.state.formView}
+    //                         devToolsView={this.state.devToolsView}
+    //                     />
+    //                 </Row>
+    //                 <div className={this.props.managedClasses.site_canvasContent}>
+    //                     <ComponentView {...{ viewType: this.state.componentView }}>
+    //                         {this.renderChildrenBySlot(this, ShellSlot.canvas)}
+    //                         {this.renderComponentByRoute(route)}
+    //                     </ComponentView>
+    //                     <Row
+    //                         resizable={true}
+    //                         hidden={!this.state.devToolsView}
+    //                         resizeFrom={RowResizeDirection.north}
+    //                         minHeight={180}
+    //                     >
+    //                         {this.renderDevTools(route.schema)}
+    //                     </Row>
+    //                 </div>
+    //             </Canvas>
+    //             <Pane
+    //                 hidden={!this.state.formView}
+    //                 resizable={true}
+    //                 resizeFrom={PaneResizeDirection.west}
+    //                 jssStyleSheet={paneStyleSheet}
+    //                 minWidth={324}
+    //             >
+    //                 {this.generateForm(route.schema)}
+    //             </Pane>
+    //         </Row>
+    //     );
+    // }
 
     private renderDevTools(schema: any): JSX.Element {
         if (this.state.devToolsView) {
@@ -661,21 +699,19 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
             : window.location.pathname.slice(0, window.location.pathname.length - 9);
     }
 
-    private generateForm(component: JSX.Element[], schema: any, route: string): JSX.Element {
-        if (component && schema) {
+    private generateForm(schema: any): JSX.Element {
             const componentData: any = this.state.componentView === ComponentViewTypes.examples
-                ? Object.assign({}, this.state.componentData[route][this.state.activeComponentIndex])
-                : Object.assign({}, this.state.detailViewComponentData[route]);
+                ? Object.assign({}, this.state.componentData[this.state.currentPath][this.state.activeComponentIndex])
+                : Object.assign({}, this.state.detailViewComponentData[this.state.currentPath]);
 
             return (
                 <ConfigurationPanel
                     schema={schema}
                     data={componentData}
-                    onChange={this.handleComponentDataChange.bind(route)}
+                    onChange={this.handleComponentDataChange}
                     formChildOptions={this.props.formChildOptions}
                 />
             );
-        }
     }
 
     private generateComponentWrapperBackground(): string {
@@ -919,6 +955,13 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
         return currentRoute;
     }
 
+    /**
+     * retreives the first component route whos route matches the provied path
+     */
+    private routeByPath(path: string): IComponentRoute {
+        return this.getRoutes(this.props.children, "/", SiteSlot.category).find((route: IComponentRoute) => route.route === path);
+    }
+
     private handlePaneCollapse = (): void => {
         this.setState({
             tableOfContentsCollapsed: !this.state.tableOfContentsCollapsed
@@ -950,7 +993,7 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
     }
 
     /**
-     * Creates a table-of-contents from a given starting point. 
+     * Creates a table-of-contents from a given starting point.
      * This is used to recursivly generate sub-items
      */
     private getToc(items: React.ReactNode | React.ReactNode[], itemsPath: string): JSX.Element[] {
@@ -988,7 +1031,7 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
             ? (
                 <TocItem
                     key={index}
-                    active={this.state.currentPath.match(tocItemPath)}
+                    active={new RegExp(this.state.currentPath).test(tocItemPath)}
                     heading={has(child, "props.children")}
                     onClick={onClick}
                     controls={uniqueId(this.convertToHyphenated(child.props.name))}
