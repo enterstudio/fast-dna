@@ -327,7 +327,7 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
             theme: this.props.activeTheme || this.getInitialTheme()
         };
     }
-    public renderNewShit(): JSX.Element {
+    public renderNewFormat(): JSX.Element {
         const currentRoute: IComponentRoute = this.routeByPath(this.state.currentPath);
 
         if (typeof currentRoute !== "object" || currentRoute === null) {
@@ -417,7 +417,7 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
                             {this.renderChildrenBySlot(this, ShellSlot.header)}
                             {this.renderSiteTitle()}
                         </ShellHeader>
-                        {this.renderNewShit()}
+                        {this.renderNewFormat()}
                         { /* TODO: delete Switch */ }
                         <Switch>
                             <Route
