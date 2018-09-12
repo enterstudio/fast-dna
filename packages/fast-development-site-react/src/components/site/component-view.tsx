@@ -2,7 +2,6 @@ import * as React from "react";
 import { Route, Switch, withRouter } from "react-router-dom";
 import { RouteComponentProps } from "react-router";
 import { IDevSiteDesignSystem } from "../design-system";
-import { toPx } from "@microsoft/fast-jss-utilities";
 import manageJss, { ComponentStyles, IJSSManagerProps, IManagedClasses } from "@microsoft/fast-jss-manager-react";
 
 /**
@@ -72,4 +71,4 @@ class ComponentView extends React.Component<IComponentViewProps & IManagedClasse
     }
 }
 
-export default manageJss(style)(withRouter(ComponentView));
+export default withRouter(manageJss(style)(ComponentView));
