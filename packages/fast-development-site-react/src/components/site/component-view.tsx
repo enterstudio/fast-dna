@@ -3,6 +3,7 @@ import { Route, Switch, withRouter } from "react-router-dom";
 import { RouteComponentProps } from "react-router";
 import { IDevSiteDesignSystem } from "../design-system";
 import manageJss, { ComponentStyles, IJSSManagerProps, IManagedClasses } from "@microsoft/fast-jss-manager-react";
+import { IComponentRoute } from "./index";
 
 /**
  * Describes the possible views for a component
@@ -19,6 +20,7 @@ export interface IComponentViewManagedClasses {
 
 export interface IComponentViewProps extends RouteComponentProps<{}> {
     viewType: ComponentViewTypes;
+    routes: IComponentRoute[]
 }
 
 const style: ComponentStyles<IComponentViewManagedClasses, IDevSiteDesignSystem> = {
@@ -41,6 +43,7 @@ class ComponentView extends React.Component<IComponentViewProps & IManagedClasse
             <div className={this.getClassName()}>
                 <Switch>
                     <Route path="/" exact={true} component={null} />
+                    {this.props.routes.map(this.renderRoute)}
                     <Route
                         path={this.props.match.url}
                         exact={true}
@@ -54,6 +57,17 @@ class ComponentView extends React.Component<IComponentViewProps & IManagedClasse
                 </Switch>
             </div>
         );
+    }
+
+    private renderRoute(route: IComponentRoute): JSX.Element[] {
+        return [
+            <Route
+                path={route.route}
+                exact={true}
+                component={(): any => route.route}
+                key={route.route}
+            />
+        ];
     }
 
     private getClassName(): string {

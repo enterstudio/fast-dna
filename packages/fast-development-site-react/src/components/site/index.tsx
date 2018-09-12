@@ -327,11 +327,12 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
             theme: this.props.activeTheme || this.getInitialTheme()
         };
     }
+
     public renderNewFormat(): JSX.Element {
         const currentRoute: IComponentRoute = this.routeByPath(this.state.currentPath);
 
         if (typeof currentRoute !== "object" || currentRoute === null) {
-            return null
+            return null;
         }
 
         const paneStyleSheet: Partial<ComponentStyles<IPaneClassNamesContract, IDevSiteDesignSystem>> = {
@@ -380,9 +381,15 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
                         />
                     </Row>
                     <div className={this.props.managedClasses.site_canvasContent}>
-                        <ComponentView viewType={this.state.componentView}>
+                        <div>
+
+                        </div>
+                        <ComponentView
+                            viewType={this.state.componentView}
+                            routes={this.getRoutes(this.props.children, "/", SiteSlot.category)}
+                        >
                             {this.renderChildrenBySlot(this, ShellSlot.canvas)}
-                            {this.renderComponentByRoute(currentRoute)}
+                            {/*this.renderComponentByRoute(currentRoute)*/}
                         </ComponentView>
                         <Row
                             resizable={true}
@@ -418,7 +425,7 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
                             {this.renderSiteTitle()}
                         </ShellHeader>
                         {this.renderNewFormat()}
-                        { /* TODO: delete Switch */ }
+                        {/* TODO: delete Switch */}
                         <Switch>
                             <Route
                                 exact={true}
@@ -550,78 +557,6 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
             : ComponentViewTypes.detail;
     }
 
-    // private renderRoutes(): JSX.Element[] {
-    //     return this.getRoutes(this.props.children, "/", SiteSlot.category)
-    //         .map(this.renderComponentRoute);
-    // }
-
-    /**
-     * Renders a route based on the active component
-     */
-    // private renderComponentRoute = (route: IComponentRoute | null): JSX.Element | null => {
-    //     const path: string = route.route;
-
-    //     return (
-    //         <Route
-    //             key={path}
-    //             path={`${path}(|examples)`}
-    //             exact={true}
-    //         >
-    //             {this.renderShellRow(route)}
-    //         </Route>
-    //     );
-    // }
-
-    // private renderShellRow(route: IComponentRoute): JSX.Element {
-    //     const paneStyleSheet: Partial<ComponentStyles<IPaneClassNamesContract, IDevSiteDesignSystem>> = {
-    //         pane: {
-    //             backgroundColor: (config: IDevSiteDesignSystem): string => {
-    //                 return config.lightGray;
-    //             }
-    //         }
-    //     };
-
-    //     return (
-    //         <Row fill={true}>
-    //             <Canvas>
-    //                 <Row>
-    //                     <ActionBar
-    //                         onComponentViewChange={this.onComponentViewChange}
-    //                         onFormToggle={this.onFormToggle}
-    //                         onDevToolsToggle={this.onDevToolsToggle}
-    //                         componentView={this.state.componentView}
-    //                         formView={this.state.formView}
-    //                         devToolsView={this.state.devToolsView}
-    //                     />
-    //                 </Row>
-    //                 <div className={this.props.managedClasses.site_canvasContent}>
-    //                     <ComponentView {...{ viewType: this.state.componentView }}>
-    //                         {this.renderChildrenBySlot(this, ShellSlot.canvas)}
-    //                         {this.renderComponentByRoute(route)}
-    //                     </ComponentView>
-    //                     <Row
-    //                         resizable={true}
-    //                         hidden={!this.state.devToolsView}
-    //                         resizeFrom={RowResizeDirection.north}
-    //                         minHeight={180}
-    //                     >
-    //                         {this.renderDevTools(route.schema)}
-    //                     </Row>
-    //                 </div>
-    //             </Canvas>
-    //             <Pane
-    //                 hidden={!this.state.formView}
-    //                 resizable={true}
-    //                 resizeFrom={PaneResizeDirection.west}
-    //                 jssStyleSheet={paneStyleSheet}
-    //                 minWidth={324}
-    //             >
-    //                 {this.generateForm(route.schema)}
-    //             </Pane>
-    //         </Row>
-    //     );
-    // }
-
     private renderDevTools(schema: any): JSX.Element {
         if (this.state.devToolsView) {
             return (
@@ -641,7 +576,7 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
     /**
      * Render the site title
      */
-    private renderSiteTitle(): JSX.Element {
+    private renderSiteTitle(): JSX.Element[] {
         const title: JSX.Element[] | undefined = this.renderChildrenBySlot(this, "title");
 
         return Array.isArray(title)
@@ -975,13 +910,15 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
     }
 
     private renderChildrenBySlot(component: any, slot: string): JSX.Element[] {
-        if (component && component.props) {
-            return React.Children.map(component.props.children, (child: JSX.Element, index: number) => {
-                if (child && child.props && child.props.slot === slot) {
+        const children: JSX.Element[] | undefined = get(component, "props.children");
+
+        return Array.isArray(children)
+            ? React.Children.map(get(component, "props.children"), (child: JSX.Element) => {
+                if (get(child, "props.slot") === slot) {
                     return child;
                 }
-            });
-        }
+            })
+            : [];
     }
 
     /**
@@ -1093,10 +1030,14 @@ class Site extends React.Component<ISiteProps & IManagedClasses<ISiteManagedClas
      */
     private hasCanvasContent(item: React.ReactElement<any>): boolean {
         return React.Children.toArray(item.props.children).findIndex((child: React.ReactElement<any>) => {
-            const slot: string = get(child, "props.slot");
-            return slot === ComponentViewSlot.example
-                || slot === ComponentViewSlot.detailExample
-                || slot === ComponentViewSlot.detailDocumentation;
+            switch (get(child, "props.slot")) {
+                case ComponentViewSlot.example:
+                case ComponentViewSlot.detailExample:
+                case ComponentViewSlot.detailDocumentation:
+                    return true;
+                default:
+                    return false;
+            }
         }) !== -1;
     }
 
